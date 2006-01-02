@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Getopt::Std;
-use Test::CPAN::Fake;
+use Test::CPANpm::Fake;
 use Pod::Usage;
 use CPAN;
 use Cwd qw(getcwd);
@@ -94,7 +94,7 @@ module is set up correctly.
 
 =head1 SEE ALSO
 
-L<Test::CPAN>, L<CPAN>
+L<Test::CPANpm>, L<CPAN>
 
 =head1 AUTHOR
 

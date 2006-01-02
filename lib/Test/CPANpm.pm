@@ -9,7 +9,7 @@ use Exporter qw(import);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 return 1;
 

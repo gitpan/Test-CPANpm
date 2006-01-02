@@ -1,5 +1,8 @@
 Revision history for Perl extension Test::CPANpm.
 
+0.004  Mon Jan  2 12:54:00 2005
+    - fixed cpanemu to jive with the package rename. d'oh!
+
 0.003  Mon Jan  2 12:07:00 2005
     - renamed module to Test::CPANpm to make brian d. foy happy
 
