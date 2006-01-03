@@ -12,9 +12,11 @@ use File::Basename;
 use Exporter qw(import);
 use CPAN::Config;
 
-our @EXPORT = qw(get_prereqs run_with_fake_modules dist_dir);
+our @EXPORT = qw(get_prereqs run_with_fake_modules dist_dir change_std restore_std);
 
 sub run_with_fake_modules (&@);
+sub change_std;
+sub restore_std;
 
 return 1;
 
@@ -128,36 +130,56 @@ sub unshift_inc {
 sub run_with_fake_modules (&@) {
     my($run, %modules) = @_;
 
+    my($out, $in) = change_std;
+    
     my $fake_dir = setup_fake_modules(%modules);
     
     local @INC = @INC;
     local $ENV{PERL5OPT} = defined($ENV{PERL5OPT}) ? $ENV{PERL5OPT} : undef;
     unshift_inc($fake_dir);
     
-    $run->();
+    my $rv = $run->();
+    restore_std($out, $in);
+    return $rv;
+}
+
+sub change_std {
+    my($out, $in);
+    
+    open($out, ">&", *STDOUT);
+    open($in, "<&", *STDIN);
+
+    if($ENV{DEBUG_TEST_CPAN}) {
+        open(STDOUT, ">&", *STDERR);
+    } else {
+        open(STDOUT, ">", "/dev/null");
+        close(STDIN);
+    }
+    
+    return($out, $in);
+}
+
+sub restore_std {
+    my($out, $in) = @_;
+    open(STDOUT, ">&", $out);
+    open(STDIN, "<&", $in);
 }
 
 sub get_prereqs {
 	my $dist_dir = shift or die 'dist_dir is required!';
 	my @followed;
 
-	unless($ENV{DEBUG_TEST_CPAN}) {
-            open(OLDSTDOUT, ">&", *STDOUT);
-            open(OLDSTDIN, "<&", *STDIN);
-            open(STDOUT, ">", "/dev/null");
-            close(STDIN);
-	}
+        my($out, $in) = change_std;
 
 	{
             local *CPAN::Distribution::follow_prereqs;
             local *CPAN::Distribution::unsat_prereq;
 
             # this is paranoid... in case DEBUG_TEST_CPAN gets changed in here,
-            # we want our old one back when it's done so that our filehandles
-            # are restored if they need to be.
+            # we want our old one back when it's done.
 
             local $ENV{DEBUG_TEST_CPAN} =
-                defined $ENV{DEBUG_TEST_CPAN} ?
+                defined($ENV{DEBUG_TEST_CPAN}) ?
                 $ENV{DEBUG_TEST_CPAN} : undef;
 
             _wrap('CPAN::Distribution::follow_prereqs', sub { @followed = splice(@_, 3); });
@@ -167,13 +189,10 @@ sub get_prereqs {
             my $d = CPAN::Distribution->new(build_dir => $dist_dir, ID => $dist_dir);
             $d->make;
             chdir($here);
-            rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN};
+            rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN} && $ENV{DEBUG_TEST_CPAN} != 2;
 	}
 
-	unless($ENV{DEBUG_TEST_CPAN}) {
-            open(STDIN, "<&", *OLDSTDIN);
-            open(STDOUT, ">&", *OLDSTDOUT);
-	}
+        restore_std($out, $in);
 	
 	return @followed;
 }

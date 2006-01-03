@@ -9,28 +9,33 @@ use Exporter qw(import);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 
 return 1;
 
 sub _do_cpan_depends_ok {
-    my($dist_dir, $deps, $test_name) = @_;    
+    my($dist_dir, $deps, $test_name) = @_;
     my @real_deps = get_prereqs($dist_dir);
     return cmp_bag(\@real_deps, $deps, $test_name);
 }
 
 sub cpan_depends_ok {    
-	my $dist_dir = dist_dir('.');
-    _do_cpan_depends_ok($dist_dir, @_);
+    my($out, $in) = change_std;
+    my $dist_dir = dist_dir('.');
+    my $rv = _do_cpan_depends_ok($dist_dir, @_);
+    return $rv;
 }
 
 sub cpan_depends_ok_force_missing {
+    my($out, $in) = change_std;
     my($deps, $missing, $test_name) = @_;
-	my $dist_dir = dist_dir('.');
+    my $dist_dir = dist_dir('.');
     my %missing = map { $_ => 0 } @$missing;
-    return run_with_fake_modules {
+    my $rv = run_with_fake_modules {
         _do_cpan_depends_ok($dist_dir, $deps, $test_name)
     } %missing;
+    restore_std($out, $in);
+    return $rv;
 }
 
 =pod

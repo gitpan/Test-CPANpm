@@ -1,5 +1,9 @@
 Revision history for Perl extension Test::CPANpm.
 
+0.005  Mon Jan  3 10:32:00 2005
+    - made logging on unit tests a bit better so I can see why some CPAN
+      testers aren't passing
+
 0.004  Mon Jan  2 12:54:00 2005
     - fixed cpanemu to jive with the package rename. d'oh!
 
