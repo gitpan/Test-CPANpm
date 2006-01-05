@@ -7,6 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Test/CPANpm.pm', # finds $VERSION
     PREREQ_PM         => {
     	'Test::Deep'	=>	0.087,
+        'CPAN'          =>  0,
     }, # e.g., Module::Name => 1.1
     EXE_FILES         => [ 'bin/cpanemu' ],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005

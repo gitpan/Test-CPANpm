@@ -9,7 +9,7 @@ use Exporter qw(import);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 
 return 1;
 
@@ -20,14 +20,14 @@ sub _do_cpan_depends_ok {
 }
 
 sub cpan_depends_ok {    
-    my($out, $in) = change_std;
+    my($out, $in) = change_std();
     my $dist_dir = dist_dir('.');
     my $rv = _do_cpan_depends_ok($dist_dir, @_);
     return $rv;
 }
 
 sub cpan_depends_ok_force_missing {
-    my($out, $in) = change_std;
+    my($out, $in) = change_std();
     my($deps, $missing, $test_name) = @_;
     my $dist_dir = dist_dir('.');
     my %missing = map { $_ => 0 } @$missing;

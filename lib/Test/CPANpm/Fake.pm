@@ -135,7 +135,7 @@ sub run_with_fake_modules (&@) {
     my $fake_dir = setup_fake_modules(%modules);
     
     local @INC = @INC;
-    local $ENV{PERL5OPT} = defined($ENV{PERL5OPT}) ? $ENV{PERL5OPT} : undef;
+    local $ENV{PERL5OPT} = exists($ENV{PERL5OPT}) ? $ENV{PERL5OPT} : undef;
     unshift_inc($fake_dir);
     
     my $rv = $run->();
@@ -179,8 +179,12 @@ sub get_prereqs {
             # we want our old one back when it's done.
 
             local $ENV{DEBUG_TEST_CPAN} =
-                defined($ENV{DEBUG_TEST_CPAN}) ?
+                exists($ENV{DEBUG_TEST_CPAN}) ?
                 $ENV{DEBUG_TEST_CPAN} : undef;
+                
+            if($ENV{DEBUG_TEST_CPAN}) {
+                warn "CPAN.pm version: $CPAN::VERSION\n";
+            }
 
             _wrap('CPAN::Distribution::follow_prereqs', sub { @followed = splice(@_, 3); });
             _wrap('CPAN::Distribution::unsat_prereq', \&_unsat_prereq);

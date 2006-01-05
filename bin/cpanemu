@@ -10,12 +10,16 @@ use CPAN;
 use Cwd qw(getcwd);
 use File::Path qw(rmtree);
 
-our(%opts, %modules, @ARGV);
+our(%opts, %modules, @ARGV, %ENV);
 
-getopts('mtih', \%opts);
+getopts('mtihd', \%opts);
 
 if($opts{h}) {
     pod2usage(0);
+}
+
+if($opts{d}) {
+    $ENV{DEBUG_TEST_CPAN} = 1;
 }
 
 if(!grep($opts{$_}, qw(m t i))) {
@@ -62,6 +66,7 @@ cpanemu - Pretend that CPAN has downloaded the package in the current directory
     -m - Make package in current directory
     -t - Test package in current directory
     -i - Install package in current directory
+    -d - Debug mode
 
 =head1 EXAMPLE
 

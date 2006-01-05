@@ -1,13 +1,19 @@
 Revision history for Perl extension Test::CPANpm.
 
-0.005  Mon Jan  3 10:32:00 2005
+0.006  Thu Jan  5 08:03:33 2006
+    - Another "debug Jost Krieger's Smokehouse" release:
+        - Depends on CPAN.pm now
+        - When debugging is on, print out what version of CPAN we are using.
+    - Update year number on change history :-)
+
+0.005  Tue Jan  3 10:32:00 2006
     - made logging on unit tests a bit better so I can see why some CPAN
       testers aren't passing
 
-0.004  Mon Jan  2 12:54:00 2005
+0.004  Mon Jan  2 12:54:00 2006
     - fixed cpanemu to jive with the package rename. d'oh!
 
-0.003  Mon Jan  2 12:07:00 2005
+0.003  Mon Jan  2 12:07:00 2006
     - renamed module to Test::CPANpm to make brian d. foy happy
 
 0.002  Thu Dec 29 12:12:12 2005
