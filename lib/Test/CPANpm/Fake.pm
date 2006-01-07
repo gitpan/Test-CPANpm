@@ -190,7 +190,7 @@ sub get_prereqs {
             _wrap('CPAN::Distribution::unsat_prereq', \&_unsat_prereq);
             my $here = getcwd();
             chdir($dist_dir);
-            my $d = CPAN::Distribution->new(build_dir => $dist_dir, ID => $dist_dir);
+            my $d = CPAN::Distribution->new(build_dir => $dist_dir, ID => $dist_dir, archived => 'Fake', unwrapped => 'Yes');
             $d->make;
             chdir($here);
             rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN} && $ENV{DEBUG_TEST_CPAN} != 2;

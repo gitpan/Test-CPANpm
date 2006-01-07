@@ -1,5 +1,12 @@
 Revision history for Perl extension Test::CPANpm.
 
+0.007  Fri Jan  6 21:28:00 2006
+    - Hopefully fixed CPAN testers failures:
+      Jost was using a newer version of CPAN.pm than me (1.87, I was on 1.7601),
+      and this new version requires that 'archive' and 'unwrapped' need to be
+      set.
+      
+
 0.006  Thu Jan  5 08:03:33 2006
     - Another "debug Jost Krieger's Smokehouse" release:
         - Depends on CPAN.pm now
