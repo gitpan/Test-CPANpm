@@ -9,7 +9,7 @@ use Exporter qw(import);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.007';
+our $VERSION = '0.008';
 
 return 1;
 
@@ -23,6 +23,7 @@ sub cpan_depends_ok {
     my($out, $in) = change_std();
     my $dist_dir = dist_dir('.');
     my $rv = _do_cpan_depends_ok($dist_dir, @_);
+    restore_std($out, $in);
     return $rv;
 }
 
@@ -192,7 +193,7 @@ Tyler "Crackerjack" MacDonald <japh@crackerjack.net>
 
 =head1 LICENSE
 
-Copyright 2005 Tyler MacDonald.
+Copyright 2006 Tyler MacDonald.
 
 This is free software; you may redistribute it under the same terms as perl itself.
 

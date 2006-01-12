@@ -1,5 +1,11 @@
 Revision history for Perl extension Test::CPANpm.
 
+0.008  Wed Jan 11 18:45:00 2006
+    - Got rid of unititialized value errors
+    - Use tempfile() instead of /dev/null - Should make this work on non-UNIXes
+    - Don't close STDIN, redirect it from a tempfile instead
+      (gets rid of 'STDIN reopened for output' warning)
+
 0.007  Fri Jan  6 21:28:00 2006
     - Hopefully fixed CPAN testers failures:
       Jost was using a newer version of CPAN.pm than me (1.87, I was on 1.7601),

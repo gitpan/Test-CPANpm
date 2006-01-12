@@ -7,7 +7,7 @@ use warnings;
 use CPAN;
 use Cwd qw(abs_path getcwd);
 use File::Path qw(rmtree mkpath);
-use File::Temp qw(mktemp tempdir);
+use File::Temp qw(mktemp tempdir tempfile);
 use File::Basename;
 use Exporter qw(import);
 use CPAN::Config;
@@ -135,7 +135,9 @@ sub run_with_fake_modules (&@) {
     my $fake_dir = setup_fake_modules(%modules);
     
     local @INC = @INC;
-    local $ENV{PERL5OPT} = exists($ENV{PERL5OPT}) ? $ENV{PERL5OPT} : undef;
+    my $perl5opt = $ENV{PERL5OPT};
+    local $ENV{PERL5OPT};
+    $ENV{PERL5OPT} = $perl5opt if($perl5opt);
     unshift_inc($fake_dir);
     
     my $rv = $run->();
@@ -146,14 +148,14 @@ sub run_with_fake_modules (&@) {
 sub change_std {
     my($out, $in);
     
-    open($out, ">&", *STDOUT);
-    open($in, "<&", *STDIN);
+    open($in, "<&", *STDIN) if fileno(STDIN);
+    open($out, ">&", *STDOUT) if fileno(STDOUT);
 
     if($ENV{DEBUG_TEST_CPAN}) {
         open(STDOUT, ">&", *STDERR);
     } else {
-        open(STDOUT, ">", "/dev/null");
-        close(STDIN);
+        open(STDOUT, ">&", scalar tempfile);
+        open(STDIN, "<&", scalar tempfile);
     }
     
     return($out, $in);
@@ -161,15 +163,15 @@ sub change_std {
 
 sub restore_std {
     my($out, $in) = @_;
-    open(STDOUT, ">&", $out);
-    open(STDIN, "<&", $in);
+    open(STDIN, "<&", $in) if defined $in;
+    open(STDOUT, ">&", $out) if defined $out;
 }
 
 sub get_prereqs {
 	my $dist_dir = shift or die 'dist_dir is required!';
 	my @followed;
 
-        my($out, $in) = change_std;
+    my($out, $in) = change_std();
 
 	{
             local *CPAN::Distribution::follow_prereqs;
@@ -178,9 +180,13 @@ sub get_prereqs {
             # this is paranoid... in case DEBUG_TEST_CPAN gets changed in here,
             # we want our old one back when it's done.
 
-            local $ENV{DEBUG_TEST_CPAN} =
-                exists($ENV{DEBUG_TEST_CPAN}) ?
-                $ENV{DEBUG_TEST_CPAN} : undef;
+            my $test_cpan = $ENV{DEBUG_TEST_CPAN};
+        
+            local $ENV{DEBUG_TEST_CPAN};
+            
+            if($test_cpan) {
+                $ENV{DEBUG_TEST_CPAN} = $test_cpan;
+            }
                 
             if($ENV{DEBUG_TEST_CPAN}) {
                 warn "CPAN.pm version: $CPAN::VERSION\n";
@@ -196,7 +202,7 @@ sub get_prereqs {
             rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN} && $ENV{DEBUG_TEST_CPAN} != 2;
 	}
 
-        restore_std($out, $in);
+    restore_std($out, $in);
 	
 	return @followed;
 }
