@@ -4,39 +4,49 @@ use 5.006;
 use strict;
 use warnings;
 use Test::CPANpm::Fake;
-use Test::Deep qw(cmp_bag);
-use Exporter qw(import);
+use Test::More;
+use Exporter;
+use base q(Exporter);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 
 return 1;
 
-sub _do_cpan_depends_ok {
-    my($dist_dir, $deps, $test_name) = @_;
-    my @real_deps = get_prereqs($dist_dir);
-    return cmp_bag(\@real_deps, $deps, $test_name);
-}
+sub cpan_depends_ok {
+    my($deps, $test_name) = @_;
+    my @actual;
+    my @deps = sort @$deps;
 
-sub cpan_depends_ok {    
     my($out, $in) = change_std();
-    my $dist_dir = dist_dir('.');
-    my $rv = _do_cpan_depends_ok($dist_dir, @_);
+    run_with_cpan_config {
+        my $dist_dir = dist_dir('.');
+        @actual = get_prereqs($dist_dir);
+        @actual = sort(@actual);
+    };
     restore_std($out, $in);
-    return $rv;
+
+    my $test = Test::More->builder;
+    $test->ok(eq_array(\@actual, \@deps));
 }
 
 sub cpan_depends_ok_force_missing {
-    my($out, $in) = change_std();
     my($deps, $missing, $test_name) = @_;
-    my $dist_dir = dist_dir('.');
-    my %missing = map { $_ => 0 } @$missing;
-    my $rv = run_with_fake_modules {
-        _do_cpan_depends_ok($dist_dir, $deps, $test_name)
-    } %missing;
+    my @actual;
+    my @deps = sort @$deps;
+
+    my($out, $in) = change_std();
+    run_with_cpan_config {
+        my $dist_dir = dist_dir('.');
+        my %missing = map { $_ => 0 } @$missing;
+        @actual = run_with_fake_modules { get_prereqs($dist_dir); } %missing;
+        @actual = sort(@actual);
+    };
     restore_std($out, $in);
-    return $rv;
+
+    my $test = Test::More->builder;
+    $test->ok(eq_array(\@actual, \@deps));
 }
 
 =pod

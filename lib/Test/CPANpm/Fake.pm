@@ -9,11 +9,17 @@ use Cwd qw(abs_path getcwd);
 use File::Path qw(rmtree mkpath);
 use File::Temp qw(mktemp tempdir tempfile);
 use File::Basename;
-use Exporter qw(import);
-use CPAN::Config;
+use Exporter;
+use base q(Exporter);
+use CPAN::FirstTime;
+use ExtUtils::MakeMaker ();
 
-our @EXPORT = qw(get_prereqs run_with_fake_modules dist_dir change_std restore_std);
+our @EXPORT = qw(
+    cpan_config get_prereqs run_with_fake_modules dist_dir change_std
+    restore_std run_with_cpan_config
+);
 
+sub run_with_cpan_config (&);
 sub run_with_fake_modules (&@);
 sub change_std;
 sub restore_std;
@@ -45,6 +51,58 @@ sub _unsat_prereq {
         return;
     }
 }
+
+sub create_cpan_config {
+    local $ENV{PERL_MM_USE_DEFAULT} = 1;
+    $CPAN::Config = {
+        urllist => [ 'ftp://ftp.cpan.org/pub/CPAN' ],
+        cpan_home => tempdir(CLEANUP => 1)
+    };
+    my $wrapper = sub {
+        my($real, @args) = @_;
+        if($args[0] =~ m{manual config}) {
+            $args[1] = 'no';
+        }
+        $real->(@args);
+    };
+    
+    _wrap('ExtUtils::MakeMaker::prompt', $wrapper);
+    _wrap('CPAN::FirstTime::prompt', $wrapper);
+    
+    mkdir("$CPAN::Config->{cpan_home}/CPAN");
+    
+    CPAN::FirstTime::init(
+        "$CPAN::Config->{cpan_home}/CPAN/Config.pm",
+        autoconfig => 'yes'
+    );
+    
+    warn "Created config in ", $CPAN::Config->{cpan_home}
+        if $ENV{DEBUG_TEST_CPAN};
+    return $CPAN::Config;
+}
+
+sub cpan_config {
+    eval "use CPAN::Config;";
+    if($CPAN::Config) {
+        return;
+    } else {
+        return create_cpan_config();
+    }    
+}
+
+sub run_with_cpan_config (&) { 
+    my $cmd = shift;
+    if(my $config = cpan_config) {
+        my $perl5opt = $ENV{PERL5OPT};
+        local $ENV{PERL5OPT};
+        $ENV{PERL5OPT} = $perl5opt if($perl5opt);
+        unshift_inc($config->{cpan_home});
+        $cmd->();
+    } else {
+        $cmd->();
+    }
+}
+    
 
 sub dist_dir_mb {
     my $root = shift;
@@ -148,14 +206,16 @@ sub run_with_fake_modules (&@) {
 sub change_std {
     my($out, $in);
     
-    open($in, "<&", *STDIN) if fileno(STDIN);
-    open($out, ">&", *STDOUT) if fileno(STDOUT);
+    open($in, "<&STDIN") if fileno(STDIN);
+    open($out, ">&STDOUT") if fileno(STDOUT);
 
     if($ENV{DEBUG_TEST_CPAN}) {
-        open(STDOUT, ">&", *STDERR);
+        open(STDOUT, ">&STDERR");
     } else {
-        open(STDOUT, ">&", scalar tempfile);
-        open(STDIN, "<&", scalar tempfile);
+        my $o = scalar tempfile;
+        my $i = scalar tempfile;
+        open(STDOUT, ">&$o");
+        open(STDIN, "<&$i");
     }
     
     return($out, $in);
@@ -163,48 +223,55 @@ sub change_std {
 
 sub restore_std {
     my($out, $in) = @_;
-    open(STDIN, "<&", $in) if defined $in;
-    open(STDOUT, ">&", $out) if defined $out;
+    open(STDIN, "<&$in") if defined $in;
+    open(STDOUT, ">&$out") if defined $out;
 }
 
 sub get_prereqs {
-	my $dist_dir = shift or die 'dist_dir is required!';
-	my @followed;
+    my $dist_dir = shift or die 'dist_dir is required!';
+    my @followed;
 
     my($out, $in) = change_std();
 
-	{
-            local *CPAN::Distribution::follow_prereqs;
-            local *CPAN::Distribution::unsat_prereq;
+    {
+        local *CPAN::Distribution::follow_prereqs;
+        local *CPAN::Distribution::unsat_prereq;
 
-            # this is paranoid... in case DEBUG_TEST_CPAN gets changed in here,
-            # we want our old one back when it's done.
+        # this is paranoid... in case DEBUG_TEST_CPAN gets changed in here,
+        # we want our old one back when it's done.
 
-            my $test_cpan = $ENV{DEBUG_TEST_CPAN};
+        my $test_cpan = $ENV{DEBUG_TEST_CPAN};
+
+        local $ENV{DEBUG_TEST_CPAN};
+
+        if($test_cpan) {
+            $ENV{DEBUG_TEST_CPAN} = $test_cpan;
+        }
+
+        if($ENV{DEBUG_TEST_CPAN}) {
+            warn "CPAN.pm version: $CPAN::VERSION\n";
+        }
+
+        _wrap('CPAN::Distribution::follow_prereqs', sub { @followed = splice(@_, 3); });
+        _wrap('CPAN::Distribution::unsat_prereq', \&_unsat_prereq);
         
-            local $ENV{DEBUG_TEST_CPAN};
-            
-            if($test_cpan) {
-                $ENV{DEBUG_TEST_CPAN} = $test_cpan;
-            }
-                
-            if($ENV{DEBUG_TEST_CPAN}) {
-                warn "CPAN.pm version: $CPAN::VERSION\n";
-            }
-
-            _wrap('CPAN::Distribution::follow_prereqs', sub { @followed = splice(@_, 3); });
-            _wrap('CPAN::Distribution::unsat_prereq', \&_unsat_prereq);
-            my $here = getcwd();
-            chdir($dist_dir);
-            my $d = CPAN::Distribution->new(build_dir => $dist_dir, ID => $dist_dir, archived => 'Fake', unwrapped => 'Yes');
-            $d->make;
-            chdir($here);
-            rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN} && $ENV{DEBUG_TEST_CPAN} != 2;
-	}
+        my $here = getcwd();
+        chdir($dist_dir);
+        
+        my $d = CPAN::Distribution->new(
+            build_dir => $dist_dir,
+            ID => $dist_dir,
+            archived => 'Fake',
+            unwrapped => 'Yes'
+        );
+        
+        $d->make;
+        chdir($here);
+        rmtree($dist_dir) unless $ENV{DEBUG_TEST_CPAN} && $ENV{DEBUG_TEST_CPAN} != 2;
+    }
 
     restore_std($out, $in);
-	
-	return @followed;
+    return @followed;
 }
 
 # perl -MCPAN -e 'chdir("dev/DBIx-Transaction"); my $d = CPAN::Distribution->new(build_dir => "/home/faraway/dev/DBIx-Transaction", ID => "dev/DBIx-Transaction"); print $d->test'
