@@ -214,8 +214,10 @@ sub change_std {
     } else {
         my $o = scalar tempfile;
         my $i = scalar tempfile;
-        open(STDOUT, ">&$o");
-        open(STDIN, "<&$i");
+        my $on = fileno $o;
+        my $oi = fileno $i;
+        open(STDOUT, ">&=$on");
+        open(STDIN, "<&=$oi");
     }
     
     return($out, $in);
@@ -223,8 +225,14 @@ sub change_std {
 
 sub restore_std {
     my($out, $in) = @_;
-    open(STDIN, "<&$in") if defined $in;
-    open(STDOUT, ">&$out") if defined $out;
+    if(defined $in) {
+        my $inn = fileno $in;
+        open(STDIN, "<&=$inn");
+    }
+    if(defined $out) {
+        my $outn = fileno $out;
+        open(STDOUT, ">&=$outn");
+    }
 }
 
 sub get_prereqs {

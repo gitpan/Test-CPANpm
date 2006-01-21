@@ -10,7 +10,7 @@ use base q(Exporter);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(cpan_depends_ok cpan_depends_ok_force_missing);
-our $VERSION = '0.009';
+our $VERSION = '0.010';
 
 return 1;
 
@@ -28,7 +28,12 @@ sub cpan_depends_ok {
     restore_std($out, $in);
 
     my $test = Test::More->builder;
-    $test->ok(eq_array(\@actual, \@deps));
+    if(eq_array(\@actual, \@deps)) {
+        $test->ok(1, $test_name);
+    } else {
+        diag("Expected dependancies: @deps, Actual: @actual");
+        $test->ok(0, $test_name);
+    }
 }
 
 sub cpan_depends_ok_force_missing {
@@ -46,7 +51,12 @@ sub cpan_depends_ok_force_missing {
     restore_std($out, $in);
 
     my $test = Test::More->builder;
-    $test->ok(eq_array(\@actual, \@deps));
+    if(eq_array(\@actual, \@deps)) {
+        $test->ok(1, $test_name);
+    } else {
+        diag("Expected dependancies: @deps, Actual: @actual");
+        $test->ok(0, $test_name);
+    }
 }
 
 =pod
